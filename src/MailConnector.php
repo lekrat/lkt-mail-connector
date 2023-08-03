@@ -62,10 +62,13 @@ class MailConnector extends AbstractMailConnector
         return $this->lastDeliveryStatus === static::FAIL_PHP_MAILER;
     }
 
-    public function mailFromPHPMailer(string $email, string $subject, string $message = '', string $fromName = ''): static
+    public function mailFromPHPMailer(string $email, string $subject, string $message = '', string $replyTo = ''): static
     {
-        if ($fromName === '') $fromName = $this->getNameFromEmail($email);
+        $toName = $this->getNameFromEmail($email);
         $email = $this->getCleanedEmail($this->getEmailWithoutName($email));
+
+        if ($replyTo === '') $replyTo = $this->getMailingFrom();
+        $fromName = $this->getNameFromEmail($replyTo);
 
         try {
             $mailer = new PHPMailer();
@@ -81,8 +84,8 @@ class MailConnector extends AbstractMailConnector
 
             if ($this->security !== '') $mailer->SMTPSecure = $this->getSecurity();
 
-            $mailer->setFrom($email, $fromName);
-            $mailer->addReplyTo($email, $fromName);
+            $mailer->setFrom($replyTo, $fromName);
+            $mailer->addReplyTo($replyTo);
             $mailer->CharSet = 'UTF-8';
 
             $mailer->Subject = $subject;
@@ -93,7 +96,7 @@ class MailConnector extends AbstractMailConnector
 
             $mailer->AltBody = strip_tags($message);
             $mailer->clearAddresses();
-            $mailer->addAddress($email, $fromName);
+            $mailer->addAddress($email, $toName);
 
             $isSent = $mailer->send();
 
@@ -105,16 +108,16 @@ class MailConnector extends AbstractMailConnector
         return $this;
     }
 
-    public function mailFromServer(string $email, string $subject, string $message = '', string $fromName = ''): static
+    public function mailFromServer(string $email, string $subject, string $message = '', string $replyTo = ''): static
     {
-        if ($fromName === '') $fromName = $this->getNameFromEmail($email);
         $email = $this->getCleanedEmail($this->getEmailWithoutName($email));
+        if ($replyTo === '') $replyTo = $email;
 
         $isSent = mail($email, $subject, $message, implode('', [
             "MIME-Version: 1.0\n",
             "Content-type: message/html; charset=utf-8\n",
             "From: {$email} \n",
-            "Return-path: {$fromName}\n",
+            "Return-path: {$replyTo}\n",
         ]));
 
         $this->lastDeliveryStatus = $isSent ? static::OK_SERVER : self::FAIL_SERVER;
