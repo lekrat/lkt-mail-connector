@@ -14,7 +14,7 @@ class ImapConnector extends AbstractMailConnector
         return $r;
     }
 
-    public static function get(string $name): ImapConnector
+    public static function get(string $name): ?static
     {
         if (!isset(static::$connectors[$name])) {
             throw new \Exception("Connector '{$name}' doesn't exists");
